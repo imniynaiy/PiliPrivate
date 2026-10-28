@@ -394,24 +394,8 @@ class _MainAppState extends PopScopeState<MainApp>
     return child;
   }
 
-  Widget _buildIcon({required NavigationBarType type, bool selected = false}) {
-    final icon = selected ? type.selectIcon : type.icon;
-    return type == .dynamics
-        ? Obx(
-            () {
-              final dynCount = _mainController.dynCount.value;
-              return Badge(
-                isLabelVisible: dynCount > 0,
-                label: _mainController.dynamicBadgeMode == .number
-                    ? Text(dynCount.toString())
-                    : null,
-                padding: const .symmetric(horizontal: 6),
-                child: icon,
-              );
-            },
-          )
-        : icon;
-  }
+  Widget _buildIcon({required NavigationBarType type, bool selected = false}) =>
+      selected ? type.selectIcon : type.icon;
 
   Widget userAndSearchVertical() {
     return Column(

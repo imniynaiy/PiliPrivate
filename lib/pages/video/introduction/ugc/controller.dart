@@ -1,3 +1,5 @@
+import 'package:PiliPlus/models/local_favorite.dart';
+
 import 'dart:async';
 import 'dart:math';
 
@@ -180,7 +182,7 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
       hasLike.value = response.like!;
       hasDislike.value = response.dislike!;
       coinNum.value = response.coin!;
-      hasFav.value = response.favorite!;
+      hasFav.value = LocalFavorites.isVideoSaved(bvid);
     }
   }
 
@@ -211,7 +213,7 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
       }
       if (response.fav == true && !hasFav.value) {
         stat?.favorite++;
-        hasFav.value = true;
+        hasFav.value = LocalFavorites.isVideoSaved(bvid);
       }
       hasDislike.value = false;
       if (!hasCoin) {
@@ -432,17 +434,20 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
     }
     int attr = followStatus.value.attribute ?? 0;
     final locallyFollowed = LocalFavorites.list('users')
-        .any((item) => '${item['id']}' == '$mid');
+        .any((item) => item.id == '$mid');
     if (!isLogin) {
       if (locallyFollowed) {
         await LocalFavorites.remove('users', mid);
         followStatus.value.attribute = 0;
       } else {
-        await LocalFavorites.add('users', {
-          'id': mid,
-          'title': videoDetail.owner?.name ?? '用户 $mid',
-          'cover': videoDetail.owner?.face,
-        });
+        await LocalFavorites.add(
+          'users',
+          LocalFavorite.fromMap({
+            'id': mid,
+            'title': videoDetail.owner?.name ?? '用户 $mid',
+            'cover': videoDetail.owner?.face,
+          }),
+        );
         followStatus.value.attribute = 2;
       }
       followStatus.refresh();
@@ -472,11 +477,14 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
             ..value.attribute = attribute
             ..refresh();
           if (attribute != 0 && attribute != 128) {
-            LocalFavorites.add('users', {
-              'id': mid,
-              'title': videoDetail.owner?.name ?? '用户 $mid',
-              'cover': videoDetail.owner?.face,
-            });
+            LocalFavorites.add(
+              'users',
+              LocalFavorite.fromMap({
+                'id': mid,
+                'title': videoDetail.owner?.name ?? '用户 $mid',
+                'cover': videoDetail.owner?.face,
+              }),
+            );
           } else {
             LocalFavorites.remove('users', mid);
           }

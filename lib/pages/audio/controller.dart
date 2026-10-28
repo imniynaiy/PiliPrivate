@@ -1,3 +1,9 @@
+import 'package:PiliPlus/http/fav.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:PiliPlus/pages/local_library/view.dart';
+import 'package:PiliPlus/models/local_favorite.dart';
+import 'package:PiliPlus/utils/local_favorites.dart';
+
 import 'dart:async';
 import 'dart:io' show Platform;
 
@@ -241,7 +247,7 @@ class AudioController extends GetxController
     audioItem.value = item;
     hasLike.value = item.stat.hasLike_7;
     coinNum.value = item.stat.hasCoin_8 ? 2 : 0;
-    hasFav.value = item.stat.hasFav;
+    hasFav.value = isUgc ? LocalFavorites.isVideoSaved(bvid) : item.stat.hasFav;
     videoPlayerServiceHandler?.onVideoDetailChange(
       item,
       (subId.firstOrNull ?? oid).toInt(),
@@ -532,7 +538,7 @@ class AudioController extends GetxController
           audioItem.refresh();
         } catch (_) {}
       }
-      hasFav.value = true;
+      hasFav.value = isUgc ? LocalFavorites.isVideoSaved(bvid) : true;
       if (!hasCoin) {
         SmartDialog.showToast('投币失败');
       } else {
@@ -583,18 +589,110 @@ class AudioController extends GetxController
     BuildContext context, {
     bool isLongPress = false,
   }) async {
-    if (!isLogin) {
-      SmartDialog.showToast('账号未登录');
-      return;
-    }
-    if (enableQuickFav) {
-      if (!isLongPress) {
-        actionFavVideo(isQuick: true);
+    if (!isUgc) {
+      if (!isLogin) {
+        SmartDialog.showToast('账号未登录');
+        return;
+      }
+      if (enableQuickFav && !isLongPress) {
+        await _remoteAudioFavorite(isQuick: true);
       } else {
         PageUtils.showFavBottomSheet(context: context, ctr: this);
       }
-    } else if (!isLongPress) {
-      PageUtils.showFavBottomSheet(context: context, ctr: this);
+      return;
+    }
+    final video = videoDetail.value;
+    if (await pickLocalFolders(
+      context,
+      LocalFavorite(
+        id: bvid,
+        aid: oid.toInt(),
+        title: video.title,
+        cover: video.pic,
+        cid: video.cid,
+      ),
+    )) {
+      hasFav.value = LocalFavorites.isVideoSaved(bvid);
+    }
+  }
+
+  @override
+  Future<void> actionFavVideo({bool isQuick = false}) async {
+    if (!isUgc) {
+      await _remoteAudioFavorite(isQuick: isQuick);
+      return;
+    }
+    final context = Get.context;
+    if (context != null) await showFavBottomSheet(context);
+  }
+
+  Future<void> _remoteAudioFavorite({bool isQuick = false}) async {
+    final (rid, type) = getFavRidType;
+    // 收藏至默认文件夹
+    if (isQuick) {
+      SmartDialog.showLoading(msg: '请求中');
+      queryVideoInFolder().then((res) async {
+        if (res.isSuccess) {
+          final hasFav = this.hasFav.value;
+          final result = hasFav
+              ? await FavHttp.unfavAll(rid: rid, type: type)
+              : await FavHttp.favVideo(
+                  resources: '$rid:$type',
+                  addIds: favFolderId.toString(),
+                );
+          SmartDialog.dismiss();
+          if (result.isSuccess) {
+            updateFavCount(hasFav ? -1 : 1);
+            this.hasFav.toggle();
+
+            SmartDialog.showToast('${hasFav ? '取消' : ''}收藏成功');
+          } else {
+            result.toast();
+          }
+        } else {
+          SmartDialog.dismiss();
+        }
+      });
+      return;
+    }
+
+    List<int?> addMediaIdsNew = [];
+    List<int?> delMediaIdsNew = [];
+    try {
+      for (final i in favFolderData.value.list!) {
+        bool isFaved = favIds?.contains(i.id) == true;
+        if (i.favState == 1) {
+          if (!isFaved) {
+            addMediaIdsNew.add(i.id);
+          }
+        } else {
+          if (isFaved) {
+            delMediaIdsNew.add(i.id);
+          }
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint(e.toString());
+    }
+    final newVal =
+        addMediaIdsNew.isNotEmpty || favIds?.length != delMediaIdsNew.length;
+
+    SmartDialog.showLoading(msg: '请求中');
+    final result = await FavHttp.favVideo(
+      resources: '$rid:$type',
+      addIds: addMediaIdsNew.join(','),
+      delIds: delMediaIdsNew.join(','),
+    );
+    SmartDialog.dismiss();
+    if (result.isSuccess) {
+      Get.back();
+      if (hasFav.value != newVal) {
+        updateFavCount(newVal ? 1 : -1);
+        hasFav.value = newVal;
+      }
+      SmartDialog.showToast('${newVal ? '' : '取消'}收藏成功');
+    } else {
+      result.toast();
     }
   }
 

@@ -1,3 +1,5 @@
+import 'package:PiliPlus/models/local_favorite.dart';
+
 import 'dart:async';
 
 import 'package:PiliPlus/common/widgets/dialog/dialog.dart';
@@ -196,14 +198,17 @@ class FavDetailController
       if (isFav) {
         await LocalFavorites.remove('folders', mediaId);
       } else {
-        await LocalFavorites.add('folders', {
-          'id': mediaId,
-          'title': info.title,
-          'subtitle': info.upper?.name,
-          'cover': info.cover,
-          'kind': 'favorite',
-          'mediaCount': info.mediaCount,
-        });
+        await LocalFavorites.add(
+          'folders',
+          LocalFavorite.fromMap({
+            'id': mediaId,
+            'title': info.title,
+            'subtitle': info.upper?.name,
+            'cover': info.cover,
+            'kind': 'favorite',
+            'mediaCount': info.mediaCount,
+          }),
+        );
       }
       folderInfo
         ..value.favState = isFav ? 0 : 1
@@ -223,14 +228,17 @@ class FavDetailController
         await LocalFavorites.remove('folders', mediaId);
       } else {
         final info = folderInfo.value;
-        await LocalFavorites.add('folders', {
-          'id': mediaId,
-          'title': info.title,
-          'subtitle': info.upper?.name,
-          'cover': info.cover,
-          'kind': 'favorite',
-          'mediaCount': info.mediaCount,
-        });
+        await LocalFavorites.add(
+          'folders',
+          LocalFavorite.fromMap({
+            'id': mediaId,
+            'title': info.title,
+            'subtitle': info.upper?.name,
+            'cover': info.cover,
+            'kind': 'favorite',
+            'mediaCount': info.mediaCount,
+          }),
+        );
       }
     } else {
       res.toast();

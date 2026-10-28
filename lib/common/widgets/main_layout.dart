@@ -11,11 +11,13 @@ class MainLayout
     required this.sideBar,
     required this.bottomNav,
     required this.body,
+    this.reserveBottomNavSpace = false,
   });
 
   final Widget? sideBar;
   final Widget? bottomNav;
   final Widget body;
+  final bool reserveBottomNavSpace;
 
   @override
   Iterable<MainType> get slots => MainType.values;
@@ -31,7 +33,17 @@ class MainLayout
   SlottedContainerRenderObjectMixin<MainType, RenderBox> createRenderObject(
     BuildContext context,
   ) {
-    return _RenderMainLayout();
+    return _RenderMainLayout()..reserveBottomNavSpace = reserveBottomNavSpace;
+  }
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    covariant SlottedContainerRenderObjectMixin<MainType, RenderBox>
+    renderObject,
+  ) {
+    (renderObject as _RenderMainLayout).reserveBottomNavSpace =
+        reserveBottomNavSpace;
   }
 }
 
@@ -39,6 +51,13 @@ class _RenderMainLayout extends RenderBox
     with
         SlottedContainerRenderObjectMixin<MainType, RenderBox>,
         SlottedLayoutMixin {
+  bool _reserveBottomNavSpace = false;
+  set reserveBottomNavSpace(bool value) {
+    if (_reserveBottomNavSpace == value) return;
+    _reserveBottomNavSpace = value;
+    markNeedsLayout();
+  }
+
   RenderBox? get sideBar => childForSlot(.sideBar);
   RenderBox? get bottomNav => childForSlot(.bottomNav);
   RenderBox get body => childForSlot(.body)!;
@@ -68,12 +87,14 @@ class _RenderMainLayout extends RenderBox
         height: constraints.maxHeight,
       );
     } else {
+      var bottomNavHeight = 0.0;
       final bottomNav = this.bottomNav;
       if (bottomNav != null) {
         final bottomNavSize = ChildLayoutHelper.layoutChild(
           bottomNav,
           constraints.loosen(),
         );
+        bottomNavHeight = bottomNavSize.height;
         setOffset(
           bottomNav,
           Offset(
@@ -86,7 +107,10 @@ class _RenderMainLayout extends RenderBox
       bodyOffset = .zero;
       bodyConstraints = BoxConstraints.tightFor(
         width: constraints.maxWidth,
-        height: constraints.maxHeight,
+        height:
+            (constraints.maxHeight -
+                    (_reserveBottomNavSpace ? bottomNavHeight : 0))
+                .clamp(0.0, constraints.maxHeight),
       );
     }
 

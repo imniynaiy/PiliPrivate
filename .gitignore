@@ -150,3 +150,9 @@ pili_release.json
 dist
 
 test*
+# Keep local favorites regression tests.
+!test/
+!test/utils/
+!test/utils/local_favorites_test.dart
+
+!test/utils/main_layout_test.dart

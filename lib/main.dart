@@ -1,3 +1,5 @@
+import 'package:PiliPlus/utils/local_favorites.dart';
+
 import 'dart:io';
 
 import 'package:PiliPlus/build_config.dart';
@@ -97,6 +99,7 @@ void main() async {
   await _initAppPath();
   try {
     await GStorage.init();
+    await LocalFavorites.init();
   } catch (e) {
     await Utils.copyText(e.toString(), needToast: false);
     if (kDebugMode) debugPrint('GStorage init error: $e');

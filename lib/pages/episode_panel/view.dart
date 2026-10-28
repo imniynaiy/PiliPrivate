@@ -1,3 +1,5 @@
+import 'package:PiliPlus/models/local_favorite.dart';
+
 import 'dart:async';
 import 'dart:math';
 
@@ -607,11 +609,26 @@ class _EpisodePanelState extends State<EpisodePanel>
             if (response) {
               await LocalFavorites.remove('series', widget.seasonId!);
             } else {
-              await LocalFavorites.add('series', {
-                'id': widget.seasonId,
-                'title': widget.ugcIntroController?.videoDetail.value.ugcSeason?.title ?? '合集 ${widget.seasonId}',
-                'cover': widget.ugcIntroController?.videoDetail.value.ugcSeason?.cover,
-              });
+              await LocalFavorites.add(
+                'series',
+                LocalFavorite.fromMap({
+                  'id': widget.seasonId,
+                  'title':
+                      widget
+                          .ugcIntroController
+                          ?.videoDetail
+                          .value
+                          .ugcSeason
+                          ?.title ??
+                      '合集 ${widget.seasonId}',
+                  'cover': widget
+                      .ugcIntroController
+                      ?.videoDetail
+                      .value
+                      .ugcSeason
+                      ?.cover,
+                }),
+              );
             }
             _favState!.value = Success(!response);
             return;
@@ -626,11 +643,26 @@ class _EpisodePanelState extends State<EpisodePanel>
             if (response) {
               await LocalFavorites.remove('series', widget.seasonId!);
             } else {
-              await LocalFavorites.add('series', {
-                'id': widget.seasonId,
-                'title': widget.ugcIntroController?.videoDetail.value.ugcSeason?.title ?? '合集 ${widget.seasonId}',
-                'cover': widget.ugcIntroController?.videoDetail.value.ugcSeason?.cover,
-              });
+              await LocalFavorites.add(
+                'series',
+                LocalFavorite.fromMap({
+                  'id': widget.seasonId,
+                  'title':
+                      widget
+                          .ugcIntroController
+                          ?.videoDetail
+                          .value
+                          .ugcSeason
+                          ?.title ??
+                      '合集 ${widget.seasonId}',
+                  'cover': widget
+                      .ugcIntroController
+                      ?.videoDetail
+                      .value
+                      .ugcSeason
+                      ?.cover,
+                }),
+              );
             }
             widget.ugcIntroController?.seasonFavState[widget.seasonId] =
                 !response;

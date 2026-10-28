@@ -6,6 +6,7 @@ import 'package:PiliPlus/http/user.dart';
 import 'package:PiliPlus/http/video.dart';
 import 'package:PiliPlus/models/common/member/tab_type.dart';
 import 'package:PiliPlus/models/model_owner.dart';
+import 'package:PiliPlus/models/local_favorite.dart';
 import 'package:PiliPlus/models_new/space/space/data.dart';
 import 'package:PiliPlus/models_new/space/space/elec.dart';
 import 'package:PiliPlus/models_new/space/space/live.dart';
@@ -256,14 +257,17 @@ class MemberController extends CommonDataController<SpaceData, SpaceData?>
       if (!account.isLogin) {
         final shouldFollow = !isFollow;
         if (shouldFollow) {
-          await LocalFavorites.add('users', {
-            'id': mid,
-            'title': username ?? '用户 $mid',
-            'cover': userAvatar,
-          });
+          await LocalFavorites.add(
+            LocalFavorites.users,
+            LocalFavorite(
+              id: '$mid',
+              title: username ?? '用户 $mid',
+              cover: userAvatar,
+            ),
+          );
           relation.value = 2;
         } else {
-          await LocalFavorites.remove('users', mid);
+          await LocalFavorites.remove(LocalFavorites.users, mid);
           relation.value = 0;
         }
         return;
@@ -275,13 +279,16 @@ class MemberController extends CommonDataController<SpaceData, SpaceData?>
         afterMod: (attribute) {
           relation.value = attribute;
           if (attribute != 0 && attribute != 128) {
-            LocalFavorites.add('users', {
-              'id': mid,
-              'title': username ?? '用户 $mid',
-              'cover': userAvatar,
-            });
+            LocalFavorites.add(
+              LocalFavorites.users,
+              LocalFavorite(
+                id: '$mid',
+                title: username ?? '用户 $mid',
+                cover: userAvatar,
+              ),
+            );
           } else {
-            LocalFavorites.remove('users', mid);
+            LocalFavorites.remove(LocalFavorites.users, mid);
           }
         },
       );

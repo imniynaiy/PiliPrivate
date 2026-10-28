@@ -1,20 +1,16 @@
+import 'package:PiliPlus/pages/local_library/view.dart';
+import 'package:PiliPlus/models/local_favorite.dart';
+import 'package:PiliPlus/pages/dynamics/local_favorites_controller.dart';
+import 'package:PiliPlus/utils/grid.dart';
+import 'package:PiliPlus/common/widgets/flutter/refresh_indicator.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:PiliPlus/common/widgets/dialog/dialog.dart';
-import 'package:PiliPlus/models/model_owner.dart';
-import 'package:PiliPlus/models_new/fav/fav_detail/media.dart';
-import 'package:PiliPlus/models_new/fav/fav_detail/ugc.dart';
-import 'package:PiliPlus/models_new/fav/fav_folder/list.dart';
-import 'package:PiliPlus/models_new/follow/list.dart';
-import 'package:PiliPlus/models_new/sub/sub/list.dart';
 import 'package:PiliPlus/pages/common/common_page.dart';
 import 'package:PiliPlus/pages/fav/video/widgets/item.dart';
-import 'package:PiliPlus/pages/fav_detail/widget/fav_video_card.dart';
 import 'package:PiliPlus/pages/follow/widgets/follow_item.dart';
 import 'package:PiliPlus/utils/local_favorites.dart';
 import 'package:PiliPlus/utils/local_favorites_sync.dart';
-import 'package:PiliPlus/utils/page_utils.dart';
-import 'package:PiliPlus/utils/utils.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:get/get.dart';
 
 class DynamicsPage extends StatefulWidget {
@@ -25,9 +21,11 @@ class DynamicsPage extends StatefulWidget {
 }
 
 class _DynamicsPageState extends CommonPageState<DynamicsPage>
-    with AutomaticKeepAliveClientMixin {
-  static const _types = ['users', 'folders', 'series', 'videos'];
-  static const _labels = ['关注', '收藏夹', '合集', '视频'];
+    with AutomaticKeepAliveClientMixin, GridMixin {
+  final _controller = LocalFavoritesController();
+  bool _syncing = false;
+  static const _types = ['users', 'folders', 'series'];
+  static const _labels = ['关注', '收藏夹', '合集'];
   @override
   bool get wantKeepAlive => true;
 
@@ -42,25 +40,34 @@ class _DynamicsPageState extends CommonPageState<DynamicsPage>
       child: DefaultTabController(
         length: _types.length,
         child: Scaffold(
+          primary: false,
           backgroundColor: Colors.transparent,
           appBar: AppBar(
             primary: false,
-            backgroundColor: colors.surface,
-            foregroundColor: colors.onSurface,
-            surfaceTintColor: Colors.transparent,
+            titleSpacing: 20,
             title: const Text('本地收藏'),
             bottom: TabBar(
-              labelColor: colors.primary,
-              unselectedLabelColor: colors.onSurfaceVariant,
-              indicatorColor: colors.primary,
-              dividerColor: colors.outlineVariant,
               tabs: _labels.map((e) => Tab(text: e)).toList(),
             ),
             actions: [
               IconButton(
+                tooltip: '新建收藏夹',
+                icon: const Icon(Icons.create_new_folder_outlined),
+                onPressed: () async {
+                  final name = await localFolderName(context);
+                  if (name != null) await LocalFavorites.createFolder(name);
+                },
+              ),
+              IconButton(
                 tooltip: '刷新',
-                onPressed: _sync,
-                icon: const Icon(Icons.refresh),
+                onPressed: _syncing ? null : _sync,
+                icon: _syncing
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh),
               ),
             ],
           ),
@@ -78,37 +85,75 @@ class _DynamicsPageState extends CommonPageState<DynamicsPage>
                     ),
                   );
                 }
-                return ListView.builder(
-                  itemCount: items.length,
-                  itemBuilder: (context, itemIndex) {
-                    final item = items[itemIndex];
-                    final id = item['id'];
-                    return Row(
-                      children: [
-                        Expanded(child: _entry(type, item)),
-                        PopupMenuButton<String>(
-                          tooltip: '更多操作',
-                          onSelected: (value) async {
-                            if (value != 'remove') return;
-                            final confirmed = await showConfirmDialog(
-                              context: context,
-                              title: const Text('确认删除'),
-                              content: const Text('确定从本地收藏中移除此项目吗？'),
+                return refreshIndicator(
+                  onRefresh: _sync,
+                  child: CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(vertical: 7),
+                        sliver: SliverGrid.builder(
+                          gridDelegate: gridDelegate,
+                          itemCount: items.length,
+                          itemBuilder: (context, itemIndex) {
+                            final item = items[itemIndex];
+                            final id = item.id;
+                            return Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                _entry(type, item),
+                                Align(
+                                  alignment: Alignment.bottomRight,
+                                  child: PopupMenuButton<String>(
+                                    tooltip: '更多操作',
+                                    onSelected: (value) async {
+                                      if (value == 'rename') {
+                                        final name = await localFolderName(
+                                          context,
+                                          initial: LocalFavorites.title(item),
+                                        );
+                                        if (name != null) {
+                                          await LocalFavorites.renameFolder(
+                                            item,
+                                            name,
+                                          );
+                                        }
+                                        return;
+                                      }
+                                      if (value != 'remove') return;
+                                      final confirmed = await showConfirmDialog(
+                                        context: context,
+                                        title: const Text('确认删除'),
+                                        content: const Text(
+                                          '仅移除本地副本；失去所有归属的视频会移入默认收藏夹。',
+                                        ),
+                                      );
+                                      if (confirmed) {
+                                        await LocalFavorites.remove(type, id);
+                                      }
+                                    },
+                                    itemBuilder: (context) => [
+                                      if (type != LocalFavorites.users)
+                                        const PopupMenuItem(
+                                          value: 'rename',
+                                          child: Text('重命名'),
+                                        ),
+                                      if (item.id !=
+                                          LocalFavorites.defaultFolder)
+                                        const PopupMenuItem(
+                                          value: 'remove',
+                                          child: Text('移除本地收藏'),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             );
-                            if (confirmed) {
-                              await LocalFavorites.remove(type, id);
-                            }
                           },
-                          itemBuilder: (context) => const [
-                            PopupMenuItem(
-                              value: 'remove',
-                              child: Text('移除本地收藏'),
-                            ),
-                          ],
                         ),
-                      ],
-                    );
-                  },
+                      ),
+                    ],
+                  ),
                 );
               });
             }),
@@ -119,86 +164,30 @@ class _DynamicsPageState extends CommonPageState<DynamicsPage>
   }
 
   Future<void> _sync() async {
-    await LocalFavoritesSync.sync();
-    LocalFavorites.refresh();
+    if (_syncing) return;
+    final confirmed = await showConfirmDialog(
+      context: context,
+      title: const Text('同步到本地收藏'),
+      content: const Text('将当前账号的关注、收藏夹、合集及其视频列表复制到本地，保留已有内容，不下载视频文件。是否继续？'),
+    );
+    if (!confirmed || !mounted) return;
+    setState(() => _syncing = true);
+    try {
+      final result = await LocalFavoritesSync.sync();
+      SmartDialog.showToast(result.message);
+    } finally {
+      if (mounted) setState(() => _syncing = false);
+    }
   }
 
-  Widget _entry(String type, Map<String, dynamic> item) {
-    final id = item['id'];
-    if (type == 'users') {
-      return FollowItem(
-        item: FollowItemModel(
-          mid: id as int,
-          uname: '${item['title'] ?? item['name'] ?? '用户 $id'}',
-          face: item['cover'] as String?,
-          sign: item['subtitle'] as String?,
-        ),
-      );
+  Widget _entry(String type, LocalFavorite item) {
+    if (type == LocalFavorites.users) {
+      return FollowItem(item: _controller.followItem(item));
     }
-
-    if (type == 'videos') {
-      final bvid = '$id';
-      return FavVideoCardH(
-        item: FavDetailItemModel(
-          id: item['aid'] as int?,
-          type: 0,
-          bvid: bvid,
-          title: '${item['title'] ?? bvid}',
-          cover: item['cover'] as String?,
-          upper: Owner(name: item['subtitle'] as String?),
-          ugc: Ugc(firstCid: item['cid'] as int?),
-        ),
-        onTap: () {
-          final cid = item['cid'] as int?;
-          if (cid != null && cid >= 0) {
-            PageUtils.toVideoPage(
-              bvid: bvid,
-              aid: item['aid'] as int?,
-              cid: cid,
-              cover: item['cover'] as String?,
-              title: item['title'] as String?,
-            );
-          }
-        },
-      );
-    }
-
-    final isSeries = type == 'series';
-    final folder = FavFolderInfo(
-      id: id as int,
-      title: '${item['title'] ?? id}',
-      cover: item['cover'] as String? ?? '',
-      intro: item['subtitle'] as String?,
-      mediaCount: item['mediaCount'] as int? ?? 0,
-    );
-    final heroTag = Utils.makeHeroTag('local-$type-$id');
     return FavVideoItem(
-      heroTag: heroTag,
-      item: folder,
-      onTap: () {
-        if (type == 'folders' && item['kind'] == 'favorite') {
-          Get.toNamed(
-            '/favDetail',
-            parameters: {
-              'mediaId': '$id',
-              'heroTag': heroTag,
-            },
-          );
-        } else {
-          Get.toNamed(
-            '/subDetail',
-            arguments: {
-              'id': id,
-              'subInfo': SubItemModel(
-                id: id,
-                title: folder.title,
-                cover: folder.cover,
-                type: isSeries ? 21 : 11,
-              ),
-            },
-          );
-        }
-      },
+      heroTag: _controller.heroTag(type, item),
+      item: _controller.folderItem(item),
+      onTap: () => _controller.openFolder(type, item),
     );
   }
 }

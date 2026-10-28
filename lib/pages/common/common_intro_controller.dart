@@ -1,3 +1,5 @@
+import 'package:PiliPlus/pages/local_library/view.dart';
+
 import 'dart:async' show FutureOr, Timer;
 
 import 'package:PiliPlus/http/fav.dart';
@@ -8,19 +10,18 @@ import 'package:PiliPlus/models/common/video/source_type.dart';
 import 'package:PiliPlus/models_new/fav/fav_folder/data.dart';
 import 'package:PiliPlus/models_new/video/video_detail/data.dart';
 import 'package:PiliPlus/models_new/video/video_detail/stat_detail.dart';
+import 'package:PiliPlus/models/local_favorite.dart';
 import 'package:PiliPlus/models_new/video/video_tag/data.dart';
 import 'package:PiliPlus/pages/video/controller.dart';
 import 'package:PiliPlus/pages/video/introduction/ugc/widgets/triple_mixin.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/global_data.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
-import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/local_favorites.dart';
 import 'package:collection/collection.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
@@ -69,6 +70,7 @@ abstract class CommonIntroController extends GetxController
   final bool isShowOnlineTotal = Pref.enableOnlineTotal;
   late final RxString total = '1'.obs;
   Timer? timer;
+  Worker? _localFavoritesWorker;
 
   late final RxInt cid;
 
@@ -80,6 +82,10 @@ abstract class CommonIntroController extends GetxController
     final args = Get.arguments;
     heroTag = args['heroTag'];
     bvid = args['bvid'];
+    hasFav.value = LocalFavorites.isVideoSaved(bvid);
+    _localFavoritesWorker = ever(LocalFavorites.revision, (_) {
+      hasFav.value = LocalFavorites.isVideoSaved(bvid);
+    });
     cid = RxInt(args['cid']);
     hasLater = RxBool(
       args['viewLater'] ?? args['sourceType'] == SourceType.watchLater,
@@ -121,6 +127,7 @@ abstract class CommonIntroController extends GetxController
   @override
   void onClose() {
     cancelTimer();
+    _localFavoritesWorker?.dispose();
     super.onClose();
   }
 
@@ -213,121 +220,24 @@ mixin FavMixin on TripleMixin {
     BuildContext context, {
     bool isLongPress = false,
   }) async {
-    if (!Accounts.main.isLogin) {
-      final isSaved = LocalFavorites.contains('videos', bvid);
-      if (isSaved) {
-        await LocalFavorites.remove('videos', bvid);
-      } else {
-        await LocalFavorites.add('videos', _localVideoMetadata);
-      }
-      hasFav.value = !isSaved;
-      SmartDialog.showToast(isSaved ? '已从本地收藏移除' : '已保存到本地收藏');
-      return;
-    }
-    // 快速收藏 &
-    // 点按 收藏至默认文件夹
-    // 长按选择文件夹
-    if (enableQuickFav) {
-      if (!isLongPress) {
-        if (hasFav.value) {
-          await LocalFavorites.remove('videos', bvid);
-        } else {
-          await LocalFavorites.add('videos', _localVideoMetadata);
-        }
-        actionFavVideo(isQuick: true);
-      } else {
-        PageUtils.showFavBottomSheet(context: context, ctr: this);
-      }
-    } else if (!isLongPress) {
-      PageUtils.showFavBottomSheet(context: context, ctr: this);
+    if (await pickLocalFolders(context, _localVideoMetadata)) {
+      hasFav.value = LocalFavorites.isVideoSaved(bvid);
+      SmartDialog.showToast('已更新本地收藏');
     }
   }
 
-  Map<String, dynamic> get _localVideoMetadata => {
-    'id': bvid,
-    'cid': videoDetail.value.cid ?? 0,
-    'title': videoDetail.value.title,
-    'subtitle': videoDetail.value.owner?.name,
-    'cover': videoDetail.value.pic,
-  };
+  LocalFavorite get _localVideoMetadata => LocalFavorite(
+    id: bvid,
+    cid: videoDetail.value.cid,
+    title: videoDetail.value.title,
+    subtitle: videoDetail.value.owner?.name,
+    cover: videoDetail.value.pic,
+  );
 
   void updateFavCount(int count);
 
   Future<void> actionFavVideo({bool isQuick = false}) async {
-    final (rid, type) = getFavRidType;
-    // 收藏至默认文件夹
-    if (isQuick) {
-      SmartDialog.showLoading(msg: '请求中');
-      queryVideoInFolder().then((res) async {
-        if (res.isSuccess) {
-          final hasFav = this.hasFav.value;
-          final result = hasFav
-              ? await FavHttp.unfavAll(rid: rid, type: type)
-              : await FavHttp.favVideo(
-                  resources: '$rid:$type',
-                  addIds: favFolderId.toString(),
-                );
-          SmartDialog.dismiss();
-          if (result.isSuccess) {
-            updateFavCount(hasFav ? -1 : 1);
-            this.hasFav.toggle();
-            if (hasFav) {
-              await LocalFavorites.remove('videos', bvid);
-            } else {
-              await LocalFavorites.add('videos', _localVideoMetadata);
-            }
-            SmartDialog.showToast('${hasFav ? '取消' : ''}收藏成功');
-          } else {
-            result.toast();
-          }
-        } else {
-          SmartDialog.dismiss();
-        }
-      });
-      return;
-    }
-
-    List<int?> addMediaIdsNew = [];
-    List<int?> delMediaIdsNew = [];
-    try {
-      for (final i in favFolderData.value.list!) {
-        bool isFaved = favIds?.contains(i.id) == true;
-        if (i.favState == 1) {
-          if (!isFaved) {
-            addMediaIdsNew.add(i.id);
-          }
-        } else {
-          if (isFaved) {
-            delMediaIdsNew.add(i.id);
-          }
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) debugPrint(e.toString());
-    }
-    final newVal =
-        addMediaIdsNew.isNotEmpty || favIds?.length != delMediaIdsNew.length;
-    if (newVal) {
-      await LocalFavorites.add('videos', _localVideoMetadata);
-    } else {
-      await LocalFavorites.remove('videos', bvid);
-    }
-    SmartDialog.showLoading(msg: '请求中');
-    final result = await FavHttp.favVideo(
-      resources: '$rid:$type',
-      addIds: addMediaIdsNew.join(','),
-      delIds: delMediaIdsNew.join(','),
-    );
-    SmartDialog.dismiss();
-    if (result.isSuccess) {
-      Get.back();
-      if (hasFav.value != newVal) {
-        updateFavCount(newVal ? 1 : -1);
-        hasFav.value = newVal;
-      }
-      SmartDialog.showToast('${newVal ? '' : '取消'}收藏成功');
-    } else {
-      result.toast();
-    }
+    final context = Get.context;
+    if (context != null) await showFavBottomSheet(context);
   }
 }

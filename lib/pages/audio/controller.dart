@@ -579,7 +579,10 @@ class AudioController extends GetxController
   }
 
   @override
-  void showFavBottomSheet(BuildContext context, {bool isLongPress = false}) {
+  Future<void> showFavBottomSheet(
+    BuildContext context, {
+    bool isLongPress = false,
+  }) async {
     if (!isLogin) {
       SmartDialog.showToast('账号未登录');
       return;

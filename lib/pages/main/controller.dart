@@ -73,6 +73,7 @@ class MainController extends GetxController
   @override
   void onInit() {
     super.onInit();
+    LocalFavoritesSync.sync();
     if (Pref.autoUpdate) {
       Update.checkUpdate();
     }

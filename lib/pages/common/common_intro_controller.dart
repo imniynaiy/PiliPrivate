@@ -28,6 +28,7 @@ import 'package:material_ui/material_ui.dart';
 abstract class CommonIntroController extends GetxController
     with GetSingleTickerProviderStateMixin, TripleMixin, FavMixin {
   late final String heroTag;
+  @override
   late String bvid;
 
   // 是否稍后再看
@@ -54,6 +55,7 @@ abstract class CommonIntroController extends GetxController
     getStat()?.favorite += count;
   }
 
+  @override
   final Rx<VideoDetailData> videoDetail = VideoDetailData().obs;
 
   void queryVideoIntro();
@@ -207,20 +209,19 @@ mixin FavMixin on TripleMixin {
   }
 
   // 收藏
-  void showFavBottomSheet(BuildContext context, {bool isLongPress = false}) {
+  Future<void> showFavBottomSheet(
+    BuildContext context, {
+    bool isLongPress = false,
+  }) async {
     if (!Accounts.main.isLogin) {
-      if (hasFav.value) {
-        LocalFavorites.remove('videos', bvid);
+      final isSaved = LocalFavorites.contains('videos', bvid);
+      if (isSaved) {
+        await LocalFavorites.remove('videos', bvid);
       } else {
-        LocalFavorites.add('videos', {
-          'id': bvid,
-          'cid': videoDetail.value.cid,
-          'title': videoDetail.value.title,
-          'subtitle': videoDetail.value.owner?.name,
-          'cover': videoDetail.value.pic,
-        });
+        await LocalFavorites.add('videos', _localVideoMetadata);
       }
-      hasFav.toggle();
+      hasFav.value = !isSaved;
+      SmartDialog.showToast(isSaved ? '已从本地收藏移除' : '已保存到本地收藏');
       return;
     }
     // 快速收藏 &
@@ -228,6 +229,11 @@ mixin FavMixin on TripleMixin {
     // 长按选择文件夹
     if (enableQuickFav) {
       if (!isLongPress) {
+        if (hasFav.value) {
+          await LocalFavorites.remove('videos', bvid);
+        } else {
+          await LocalFavorites.add('videos', _localVideoMetadata);
+        }
         actionFavVideo(isQuick: true);
       } else {
         PageUtils.showFavBottomSheet(context: context, ctr: this);
@@ -236,6 +242,14 @@ mixin FavMixin on TripleMixin {
       PageUtils.showFavBottomSheet(context: context, ctr: this);
     }
   }
+
+  Map<String, dynamic> get _localVideoMetadata => {
+    'id': bvid,
+    'cid': videoDetail.value.cid ?? 0,
+    'title': videoDetail.value.title,
+    'subtitle': videoDetail.value.owner?.name,
+    'cover': videoDetail.value.pic,
+  };
 
   void updateFavCount(int count);
 
@@ -257,17 +271,11 @@ mixin FavMixin on TripleMixin {
           if (result.isSuccess) {
             updateFavCount(hasFav ? -1 : 1);
             this.hasFav.toggle();
-              if (hasFav) {
-                await LocalFavorites.remove('videos', bvid);
-              } else {
-                await LocalFavorites.add('videos', {
-                  'id': bvid,
-                  'cid': videoDetail.value.cid,
-                  'title': videoDetail.value.title,
-                  'subtitle': videoDetail.value.owner?.name,
-                  'cover': videoDetail.value.pic,
-                });
-              }
+            if (hasFav) {
+              await LocalFavorites.remove('videos', bvid);
+            } else {
+              await LocalFavorites.add('videos', _localVideoMetadata);
+            }
             SmartDialog.showToast('${hasFav ? '取消' : ''}收藏成功');
           } else {
             result.toast();
@@ -313,13 +321,7 @@ mixin FavMixin on TripleMixin {
         hasFav.value = newVal;
       }
       if (newVal) {
-        await LocalFavorites.add('videos', {
-          'id': bvid,
-          'cid': videoDetail.value.cid,
-          'title': videoDetail.value.title,
-          'subtitle': videoDetail.value.owner?.name,
-          'cover': videoDetail.value.pic,
-        });
+        await LocalFavorites.add('videos', _localVideoMetadata);
       } else {
         await LocalFavorites.remove('videos', bvid);
       }

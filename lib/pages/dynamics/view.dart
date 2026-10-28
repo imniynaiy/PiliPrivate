@@ -10,6 +10,7 @@ import 'package:PiliPlus/pages/fav/video/widgets/item.dart';
 import 'package:PiliPlus/pages/fav_detail/widget/fav_video_card.dart';
 import 'package:PiliPlus/pages/follow/widgets/follow_item.dart';
 import 'package:PiliPlus/utils/local_favorites.dart';
+import 'package:PiliPlus/utils/local_favorites_sync.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:flutter/material.dart';
@@ -27,8 +28,6 @@ class _DynamicsPageState extends CommonPageState<DynamicsPage>
     with AutomaticKeepAliveClientMixin {
   static const _types = ['users', 'folders', 'series', 'videos'];
   static const _labels = ['关注', '收藏夹', '合集', '视频'];
-  final _revision = 0.obs;
-
   @override
   bool get wantKeepAlive => true;
 
@@ -46,12 +45,21 @@ class _DynamicsPageState extends CommonPageState<DynamicsPage>
           backgroundColor: Colors.transparent,
           appBar: AppBar(
             primary: false,
+            backgroundColor: colors.surface,
+            foregroundColor: colors.onSurface,
+            surfaceTintColor: Colors.transparent,
             title: const Text('本地收藏'),
-            bottom: TabBar(tabs: _labels.map((e) => Tab(text: e)).toList()),
+            bottom: TabBar(
+              labelColor: colors.primary,
+              unselectedLabelColor: colors.onSurfaceVariant,
+              indicatorColor: colors.primary,
+              dividerColor: colors.outlineVariant,
+              tabs: _labels.map((e) => Tab(text: e)).toList(),
+            ),
             actions: [
               IconButton(
                 tooltip: '刷新',
-                onPressed: () => _revision.value++,
+                onPressed: _sync,
                 icon: const Icon(Icons.refresh),
               ),
             ],
@@ -60,7 +68,7 @@ class _DynamicsPageState extends CommonPageState<DynamicsPage>
             children: List.generate(_types.length, (index) {
               final type = _types[index];
               return Obx(() {
-                _revision.value;
+                LocalFavorites.revision.value;
                 final items = LocalFavorites.list(type);
                 if (items.isEmpty) {
                   return Center(
@@ -89,7 +97,6 @@ class _DynamicsPageState extends CommonPageState<DynamicsPage>
                             );
                             if (confirmed) {
                               await LocalFavorites.remove(type, id);
-                              _revision.value++;
                             }
                           },
                           itemBuilder: (context) => const [
@@ -109,6 +116,11 @@ class _DynamicsPageState extends CommonPageState<DynamicsPage>
         ),
       ),
     );
+  }
+
+  Future<void> _sync() async {
+    await LocalFavoritesSync.sync();
+    LocalFavorites.refresh();
   }
 
   Widget _entry(String type, Map<String, dynamic> item) {
@@ -138,7 +150,7 @@ class _DynamicsPageState extends CommonPageState<DynamicsPage>
         ),
         onTap: () {
           final cid = item['cid'] as int?;
-          if (cid != null && cid > 0) {
+          if (cid != null && cid >= 0) {
             PageUtils.toVideoPage(
               bvid: bvid,
               aid: item['aid'] as int?,

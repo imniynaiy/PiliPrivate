@@ -9,7 +9,11 @@ abstract final class LocalFavoritesSync {
   static Future<void> sync() async {
     if (!Accounts.main.isLogin) return;
     try {
-      final follows = await FollowHttp.followings(vmid: Accounts.main.mid, pn: 1, ps: 50);
+      final follows = await FollowHttp.followings(
+        vmid: Accounts.main.mid,
+        pn: 1,
+        ps: 50,
+      );
       if (follows case Success(:final response)) {
         for (final user in response.list ?? const []) {
           await LocalFavorites.add('users', {
@@ -22,7 +26,11 @@ abstract final class LocalFavoritesSync {
     } catch (_) {}
 
     try {
-      final subscriptions = await UserHttp.userSubFolder(mid: Accounts.main.mid, pn: 1, ps: 50);
+      final subscriptions = await UserHttp.userSubFolder(
+        mid: Accounts.main.mid,
+        pn: 1,
+        ps: 50,
+      );
       if (subscriptions case Success(:final response)) {
         for (final item in response.list ?? const []) {
           final type = item.type == 21 ? 'series' : 'folders';
@@ -32,6 +40,7 @@ abstract final class LocalFavoritesSync {
             'subtitle': item.upper?.name,
             'cover': item.cover,
             'kind': 'subscription',
+            'mediaCount': item.mediaCount,
           });
         }
       }
@@ -39,12 +48,20 @@ abstract final class LocalFavoritesSync {
 
     // Pull a page of each online favorite folder; local-only entries remain intact.
     try {
-      final folders = await FavHttp.userfavFolder(pn: 1, ps: 50, mid: Accounts.main.mid);
+      final folders = await FavHttp.userfavFolder(
+        pn: 1,
+        ps: 50,
+        mid: Accounts.main.mid,
+      );
       if (folders case Success(:final response)) {
         for (final folder in response.list ?? const []) {
           final id = folder.id;
           if (id == 0) continue;
-          final detail = await FavHttp.userFavFolderDetail(mediaId: id, pn: 1, ps: 100);
+          final detail = await FavHttp.userFavFolderDetail(
+            mediaId: id,
+            pn: 1,
+            ps: 100,
+          );
           if (detail case Success(:final response)) {
             for (final media in response.medias ?? const []) {
               if (media.bvid case final bvid? when bvid.isNotEmpty) {

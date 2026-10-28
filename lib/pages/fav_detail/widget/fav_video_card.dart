@@ -24,17 +24,23 @@ class FavVideoCardH extends StatelessWidget {
   final FavDetailItemModel item;
   final int? index;
   final BaseFavController? ctr;
+  final VoidCallback? onTap;
 
   const FavVideoCardH({
     super.key,
     required this.item,
     this.index,
     this.ctr,
+    this.onTap,
   }) : assert(ctr == null || index != null);
 
-  bool get isSort => ctr == null;
+  bool get isSort => ctr == null && onTap == null;
 
   void _onTap() {
+    if (onTap case final onTap?) {
+      onTap();
+      return;
+    }
     // 0/4/16/...: 正常；9: up自己删除；1: 其他原因删除
     if (const [1, 9].contains(item.attr)) {
       Get.toNamed('/member?mid=${item.upper?.mid}');
@@ -63,7 +69,7 @@ class FavVideoCardH extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isOwner = !isSort && ctr!.isOwner;
+    final isOwner = !isSort && ctr?.isOwner == true;
     late final enableMultiSelect = ctr?.enableMultiSelect.value ?? false;
     final colorScheme = ColorScheme.of(context);
 

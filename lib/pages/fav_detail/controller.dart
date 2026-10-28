@@ -202,6 +202,7 @@ class FavDetailController
           'subtitle': info.upper?.name,
           'cover': info.cover,
           'kind': 'favorite',
+          'mediaCount': info.mediaCount,
         });
       }
       folderInfo
@@ -228,6 +229,7 @@ class FavDetailController
           'subtitle': info.upper?.name,
           'cover': info.cover,
           'kind': 'favorite',
+          'mediaCount': info.mediaCount,
         });
       }
     } else {

@@ -13,9 +13,9 @@ enum NavigationBarType implements EnumWithLabel {
     HomePage(),
   ),
   dynamics(
-    '动态',
-    Icon(CustomIcons.motion_photos_on_outlined),
-    Icon(CustomIcons.motion_photos_on),
+    '收藏',
+    Icon(Icons.bookmarks_outlined),
+    Icon(Icons.bookmarks),
     DynamicsPage(),
   ),
   mine(

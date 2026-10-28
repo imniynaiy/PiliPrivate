@@ -305,6 +305,13 @@ mixin FavMixin on TripleMixin {
     } catch (e) {
       if (kDebugMode) debugPrint(e.toString());
     }
+    final newVal =
+        addMediaIdsNew.isNotEmpty || favIds?.length != delMediaIdsNew.length;
+    if (newVal) {
+      await LocalFavorites.add('videos', _localVideoMetadata);
+    } else {
+      await LocalFavorites.remove('videos', bvid);
+    }
     SmartDialog.showLoading(msg: '请求中');
     final result = await FavHttp.favVideo(
       resources: '$rid:$type',
@@ -314,16 +321,9 @@ mixin FavMixin on TripleMixin {
     SmartDialog.dismiss();
     if (result.isSuccess) {
       Get.back();
-      final newVal =
-          addMediaIdsNew.isNotEmpty || favIds?.length != delMediaIdsNew.length;
       if (hasFav.value != newVal) {
         updateFavCount(newVal ? 1 : -1);
         hasFav.value = newVal;
-      }
-      if (newVal) {
-        await LocalFavorites.add('videos', _localVideoMetadata);
-      } else {
-        await LocalFavorites.remove('videos', bvid);
       }
       SmartDialog.showToast('${newVal ? '' : '取消'}收藏成功');
     } else {

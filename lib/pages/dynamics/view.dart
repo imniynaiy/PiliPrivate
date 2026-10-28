@@ -1,17 +1,10 @@
-import 'package:PiliPlus/common/widgets/scroll_physics.dart' show tabBarView;
-import 'package:PiliPlus/http/loading_state.dart';
-import 'package:PiliPlus/models/common/dynamic/dynamics_type.dart';
-import 'package:PiliPlus/models/common/dynamic/up_panel_position.dart';
-import 'package:PiliPlus/models/dynamics/up.dart';
 import 'package:PiliPlus/pages/common/common_page.dart';
-import 'package:PiliPlus/pages/dynamics/controller.dart';
-import 'package:PiliPlus/pages/dynamics/widgets/up_panel.dart';
-import 'package:PiliPlus/pages/dynamics_create/view.dart';
-import 'package:PiliPlus/pages/dynamics_tab/view.dart';
-import 'package:PiliPlus/pages/main/controller.dart';
-import 'package:PiliPlus/utils/extension/get_ext.dart';
+import 'package:PiliPlus/utils/local_favorites.dart';
+import 'package:PiliPlus/utils/page_utils.dart';
+import 'package:PiliPlus/models_new/sub/sub/list.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
-import 'package:material_ui/material_ui.dart' hide DraggableScrollableSheet;
 
 class DynamicsPage extends StatefulWidget {
   const DynamicsPage({super.key});
@@ -22,189 +15,120 @@ class DynamicsPage extends StatefulWidget {
 
 class _DynamicsPageState extends CommonPageState<DynamicsPage>
     with AutomaticKeepAliveClientMixin {
-  final _dynamicsController = Get.putOrFind(DynamicsController.new);
-  UpPanelPosition get upPanelPosition => _dynamicsController.upPanelPosition;
-  late final MainController _mainController = Get.find<MainController>();
+  static const _types = ['users', 'folders', 'series', 'videos'];
+  static const _labels = ['关注', '收藏夹', '合集', '视频'];
+  final _revision = 0.obs;
 
   @override
   bool get wantKeepAlive => true;
 
-  Widget _createDynamicBtn(ColorScheme colorScheme, {bool isRight = true}) =>
-      Container(
-        width: 34,
-        height: 34,
-        margin: isRight ? const .only(right: 16) : const .only(left: 16),
-        child: IconButton(
-          tooltip: '发布动态',
-          style: ButtonStyle(
-            padding: const WidgetStatePropertyAll(EdgeInsets.zero),
-            backgroundColor: WidgetStatePropertyAll(
-              colorScheme.secondaryContainer,
-            ),
-          ),
-          onPressed: () => CreateDynPanel.onCreateDyn(context),
-          icon: Icon(
-            Icons.add,
-            size: 18,
-            color: colorScheme.onSecondaryContainer,
-          ),
-        ),
-      );
-
-  Widget upPanelPart(ColorScheme colorScheme) {
-    final isTop = upPanelPosition == .top;
-    final needBg = upPanelPosition.index > 2;
-    return Material(
-      type: needBg ? .canvas : .transparency,
-      color: needBg ? colorScheme.surface : null,
-      child: SizedBox(
-        width: isTop ? null : 64,
-        height: isTop ? 76 : null,
-        child: NotificationListener<ScrollEndNotification>(
-          onNotification: (notification) {
-            final metrics = notification.metrics;
-            if (metrics.pixels >= metrics.maxScrollExtent - 300) {
-              _dynamicsController.onLoadMore();
-            }
-            return false;
-          },
-          child: Obx(
-            () => _buildUpPanel(_dynamicsController.loadingState.value),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildUpPanel(LoadingState<FollowUpModel> upState) {
-    return switch (upState) {
-      Loading() => const SizedBox.shrink(),
-      Success(:final response) => UpPanel(
-        upData: response,
-        dynamicsController: _dynamicsController,
-      ),
-      Error() => Center(
-        child: IconButton(
-          icon: const Icon(Icons.refresh),
-          onPressed: _dynamicsController.onReload,
-        ),
-      ),
-    };
-  }
-
-  bool get checkPage =>
-      _mainController.navigationBars[0] != .dynamics &&
-      _mainController.selectedIndex.value == 0;
-
-  @override
-  bool onNotificationType1(UserScrollNotification notification) {
-    if (checkPage) {
-      return false;
-    }
-    return super.onNotificationType1(notification);
-  }
-
-  @override
-  bool onNotificationType2(ScrollNotification notification) {
-    if (checkPage) {
-      return false;
-    }
-    return super.onNotificationType2(notification);
-  }
-
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final colorScheme = ColorScheme.of(context);
-
-    Widget? drawer;
-    Widget? endDrawer;
-
-    Widget? leading;
-    Widget actions;
-
-    Widget child = tabBarView(
-      controller: _dynamicsController.tabController,
-      children: DynamicsTabType.values
-          .map((e) => DynamicsTabPage(dynamicsType: e))
-          .toList(),
-    );
-
-    switch (upPanelPosition) {
-      case .top:
-        child = Column(
-          children: [
-            upPanelPart(colorScheme),
-            Expanded(child: child),
-          ],
-        );
-        actions = _createDynamicBtn(colorScheme);
-      case .leftFixed:
-        child = Row(
-          children: [
-            upPanelPart(colorScheme),
-            Expanded(child: child),
-          ],
-        );
-        actions = _createDynamicBtn(colorScheme);
-      case .rightFixed:
-        child = Row(
-          children: [
-            Expanded(child: child),
-            upPanelPart(colorScheme),
-          ],
-        );
-        actions = _createDynamicBtn(colorScheme);
-      case .leftDrawer:
-        drawer = upPanelPart(colorScheme);
-        actions = _createDynamicBtn(colorScheme);
-        leading = const DrawerButton();
-      case .rightDrawer:
-        endDrawer = upPanelPart(colorScheme);
-        leading = _createDynamicBtn(colorScheme, isRight: false);
-        actions = const EndDrawerButton();
-    }
-
-    return Scaffold(
-      primary: false,
-      resizeToAvoidBottomInset: false,
-      backgroundColor: Colors.transparent,
-      appBar: PreferredSize(
-        preferredSize: const .fromHeight(50),
-        child: Row(
-          children: [
-            ?leading,
-            Expanded(
-              child: TabBar(
-                dividerHeight: 0,
-                isScrollable: true,
-                tabAlignment: .start,
-                dividerColor: Colors.transparent,
-                labelColor: colorScheme.primary,
-                indicatorColor: colorScheme.primary,
-                controller: _dynamicsController.tabController,
-                unselectedLabelColor: colorScheme.onSurface,
-                labelStyle:
-                    TabBarTheme.of(context).labelStyle
-                        ?.copyWith(fontSize: 13) ??
-                    const TextStyle(fontSize: 13),
-                tabs: DynamicsTabType.values
-                    .map((e) => Tab(text: e.label))
-                    .toList(),
-                onTap: (index) {
-                  if (!_dynamicsController.tabController.indexIsChanging) {
-                    _dynamicsController.animateToTop();
-                  }
-                },
-              ),
+    final colors = Theme.of(context).colorScheme;
+    return Localizations.override(
+      context: context,
+      locale: const Locale('zh', 'CN'),
+      delegates: GlobalMaterialLocalizations.delegates,
+      child: DefaultTabController(
+        length: _types.length,
+        child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          primary: false,
+          title: const Text('本地收藏'),
+          bottom: TabBar(tabs: _labels.map((e) => Tab(text: e)).toList()),
+          actions: [
+            IconButton(
+              tooltip: '刷新',
+              onPressed: () => _revision.value++,
+              icon: const Icon(Icons.refresh),
             ),
-            actions,
           ],
         ),
+        body: TabBarView(
+          children: List.generate(_types.length, (index) {
+            final type = _types[index];
+            return Obx(() {
+              _revision.value;
+              final items = LocalFavorites.list(type);
+              if (items.isEmpty) {
+                return Center(child: Text('暂无${_labels[index]}', style: TextStyle(color: colors.outline)));
+              }
+              return ListView.builder(
+                itemCount: items.length,
+                itemBuilder: (context, i) {
+                  final item = items[i];
+                  final id = item['id'];
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundImage: item['cover'] is String && (item['cover'] as String).isNotEmpty
+                          ? NetworkImage(item['cover'] as String)
+                          : null,
+                      child: item['cover'] == null ? const Icon(Icons.bookmark_outline) : null,
+                    ),
+                    title: Text('${item['title'] ?? item['name'] ?? id}', maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: item['subtitle'] == null ? null : Text('${item['subtitle']}', maxLines: 1),
+                    onTap: () {
+                      if (type == 'users') Get.toNamed('/member', parameters: {'mid': '$id'});
+                      if (type == 'videos') {
+                        final cid = item['cid'] as int?;
+                        if (cid != null && cid > 0) {
+                          PageUtils.toVideoPage(
+                            bvid: '$id',
+                            cid: cid,
+                            aid: item['aid'] as int?,
+                            cover: item['cover'] as String?,
+                            title: item['title'] as String?,
+                          );
+                        }
+                      }
+                      if (type == 'folders') {
+                        if (item['kind'] == 'favorite') {
+                          Get.toNamed('/favDetail', parameters: {
+                            'mediaId': '$id',
+                            'heroTag': 'local-$id',
+                          });
+                        } else {
+                          Get.toNamed('/subDetail', arguments: {
+                            'id': id,
+                            'subInfo': SubItemModel(
+                              id: id as int?,
+                              title: item['title'] as String?,
+                              cover: item['cover'] as String?,
+                              type: 11,
+                            ),
+                          });
+                        }
+                      }
+                      if (type == 'series') {
+                        Get.toNamed('/subDetail', arguments: {
+                          'id': id,
+                          'subInfo': SubItemModel(
+                            id: id as int?,
+                            title: item['title'] as String?,
+                            cover: item['cover'] as String?,
+                            type: 21,
+                          ),
+                        });
+                      }
+                    },
+                    trailing: IconButton(
+                      tooltip: '移除',
+                      icon: const Icon(Icons.close),
+                      onPressed: () async {
+                        await LocalFavorites.remove(type, id);
+                        _revision.value++;
+                      },
+                    ),
+                  );
+                },
+              );
+            });
+          }),
+        ),
+        ),
       ),
-      drawer: drawer,
-      endDrawer: endDrawer,
-      body: onBuild(child),
     );
   }
 }

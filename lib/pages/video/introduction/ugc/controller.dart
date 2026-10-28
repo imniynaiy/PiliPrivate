@@ -36,6 +36,7 @@ import 'package:PiliPlus/utils/extension/string_ext.dart';
 import 'package:PiliPlus/utils/feed_back.dart';
 import 'package:PiliPlus/utils/global_data.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
+import 'package:PiliPlus/utils/local_favorites.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/request_utils.dart';
@@ -421,10 +422,6 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
 
   // 关注/取关up
   Future<void> actionRelationMod(BuildContext context) async {
-    if (!isLogin) {
-      SmartDialog.showToast('账号未登录');
-      return;
-    }
     final videoDetail = this.videoDetail.value;
     if (videoDetail.staff?.isNotEmpty == true) {
       return;
@@ -434,6 +431,23 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
       return;
     }
     int attr = followStatus.value.attribute ?? 0;
+    final locallyFollowed = LocalFavorites.list('users')
+        .any((item) => '${item['id']}' == '$mid');
+    if (!isLogin) {
+      if (locallyFollowed) {
+        await LocalFavorites.remove('users', mid);
+        followStatus.value.attribute = 0;
+      } else {
+        await LocalFavorites.add('users', {
+          'id': mid,
+          'title': videoDetail.owner?.name ?? '用户 $mid',
+          'cover': videoDetail.owner?.face,
+        });
+        followStatus.value.attribute = 2;
+      }
+      followStatus.refresh();
+      return;
+    }
     if (attr == 128) {
       final res = await VideoHttp.relationMod(
         mid: mid,
@@ -444,6 +458,7 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
         followStatus
           ..value.attribute = 0
           ..refresh();
+        await LocalFavorites.remove('users', mid);
       }
       return;
     } else {
@@ -456,6 +471,15 @@ class UgcIntroController extends CommonIntroController with ReloadMixin {
           followStatus
             ..value.attribute = attribute
             ..refresh();
+          if (attribute != 0 && attribute != 128) {
+            LocalFavorites.add('users', {
+              'id': mid,
+              'title': videoDetail.owner?.name ?? '用户 $mid',
+              'cover': videoDetail.owner?.face,
+            });
+          } else {
+            LocalFavorites.remove('users', mid);
+          }
           Timer(const Duration(milliseconds: 500), queryFollowStatus);
         },
       );

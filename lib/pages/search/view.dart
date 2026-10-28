@@ -49,13 +49,6 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
-    final trending = _searchController.enableTrending
-        ? _buildHotSearch()
-        : null;
-    final rcmd = _searchController.enableSearchRcmd
-        ? _buildHotSearch(isTrending: false)
-        : null;
-
     return SimpleScaffold(
       appBar: _buildAppBar,
       body: Padding(
@@ -64,19 +57,7 @@ class _SearchPageState extends State<SearchPage> {
           child: CustomScrollView(
             slivers: [
               if (_searchController.searchSuggestion) _buildSearchSuggest(),
-              if (isPortrait) ...[
-                ?trending,
-                _buildHistory,
-                ?rcmd,
-              ] else if (trending != null || rcmd != null)
-                SliverCrossAxisGroup(
-                  slivers: [
-                    SliverMainAxisGroup(slivers: [?trending, ?rcmd]),
-                    _buildHistory,
-                  ],
-                )
-              else
-                _buildHistory,
+              _buildHistory,
               SliverPadding(padding: .only(bottom: padding.bottom)),
             ],
           ),

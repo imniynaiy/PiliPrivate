@@ -18,6 +18,7 @@ import 'package:PiliPlus/utils/extension/nested_scroll_ext.dart';
 import 'package:PiliPlus/utils/request_utils.dart';
 import 'package:PiliPlus/utils/share_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
+import 'package:PiliPlus/utils/local_favorites.dart';
 import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart'
     show ExtendedNestedScrollViewState;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -246,21 +247,43 @@ class MemberController extends CommonDataController<SpaceData, SpaceData?>
     }
   }
 
-  void onFollow(BuildContext context) {
+  Future<void> onFollow(BuildContext context) async {
     if (mid == account.mid) {
       Get.toNamed('/editProfile');
     } else if (relation.value == 128) {
       _onBlock();
     } else {
       if (!account.isLogin) {
-        SmartDialog.showToast('账号未登录');
+        final shouldFollow = !isFollow;
+        if (shouldFollow) {
+          await LocalFavorites.add('users', {
+            'id': mid,
+            'title': username ?? '用户 $mid',
+            'cover': userAvatar,
+          });
+          relation.value = 2;
+        } else {
+          await LocalFavorites.remove('users', mid);
+          relation.value = 0;
+        }
         return;
       }
       RequestUtils.actionRelationMod(
         context: context,
         mid: mid,
         isFollow: isFollow,
-        afterMod: (attribute) => relation.value = attribute,
+        afterMod: (attribute) {
+          relation.value = attribute;
+          if (attribute != 0 && attribute != 128) {
+            LocalFavorites.add('users', {
+              'id': mid,
+              'title': username ?? '用户 $mid',
+              'cover': userAvatar,
+            });
+          } else {
+            LocalFavorites.remove('users', mid);
+          }
+        },
       );
     }
   }

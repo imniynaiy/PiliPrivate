@@ -18,6 +18,7 @@ import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
+import 'package:PiliPlus/utils/local_favorites.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -160,6 +161,9 @@ abstract class CommonIntroController extends GetxController
 }
 
 mixin FavMixin on TripleMixin {
+  String get bvid;
+  Rx<VideoDetailData> get videoDetail;
+
   Set? favIds;
   int? quickFavId;
   late final enableQuickFav = Pref.enableQuickFav;
@@ -205,7 +209,18 @@ mixin FavMixin on TripleMixin {
   // 收藏
   void showFavBottomSheet(BuildContext context, {bool isLongPress = false}) {
     if (!Accounts.main.isLogin) {
-      SmartDialog.showToast('账号未登录');
+      if (hasFav.value) {
+        LocalFavorites.remove('videos', bvid);
+      } else {
+        LocalFavorites.add('videos', {
+          'id': bvid,
+          'cid': videoDetail.value.cid,
+          'title': videoDetail.value.title,
+          'subtitle': videoDetail.value.owner?.name,
+          'cover': videoDetail.value.pic,
+        });
+      }
+      hasFav.toggle();
       return;
     }
     // 快速收藏 &
@@ -242,6 +257,17 @@ mixin FavMixin on TripleMixin {
           if (result.isSuccess) {
             updateFavCount(hasFav ? -1 : 1);
             this.hasFav.toggle();
+              if (hasFav) {
+                await LocalFavorites.remove('videos', bvid);
+              } else {
+                await LocalFavorites.add('videos', {
+                  'id': bvid,
+                  'cid': videoDetail.value.cid,
+                  'title': videoDetail.value.title,
+                  'subtitle': videoDetail.value.owner?.name,
+                  'cover': videoDetail.value.pic,
+                });
+              }
             SmartDialog.showToast('${hasFav ? '取消' : ''}收藏成功');
           } else {
             result.toast();
@@ -285,6 +311,17 @@ mixin FavMixin on TripleMixin {
       if (hasFav.value != newVal) {
         updateFavCount(newVal ? 1 : -1);
         hasFav.value = newVal;
+      }
+      if (newVal) {
+        await LocalFavorites.add('videos', {
+          'id': bvid,
+          'cid': videoDetail.value.cid,
+          'title': videoDetail.value.title,
+          'subtitle': videoDetail.value.owner?.name,
+          'cover': videoDetail.value.pic,
+        });
+      } else {
+        await LocalFavorites.remove('videos', bvid);
       }
       SmartDialog.showToast('${newVal ? '' : '取消'}收藏成功');
     } else {

@@ -31,6 +31,7 @@ import 'package:PiliPlus/utils/extension/scroll_controller_ext.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
+import 'package:PiliPlus/utils/local_favorites.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -602,6 +603,19 @@ class _EpisodePanelState extends State<EpisodePanel>
             ? const Icon(Icons.notifications_off_outlined)
             : const Icon(Icons.notifications_active_outlined),
         onPressed: () async {
+          if (!Accounts.main.isLogin) {
+            if (response) {
+              await LocalFavorites.remove('series', widget.seasonId!);
+            } else {
+              await LocalFavorites.add('series', {
+                'id': widget.seasonId,
+                'title': widget.ugcIntroController?.videoDetail.value.ugcSeason?.title ?? '合集 ${widget.seasonId}',
+                'cover': widget.ugcIntroController?.videoDetail.value.ugcSeason?.cover,
+              });
+            }
+            _favState!.value = Success(!response);
+            return;
+          }
           final res = await FavHttp.seasonFav(
             isFav: response,
             seasonId: widget.seasonId,
@@ -609,6 +623,15 @@ class _EpisodePanelState extends State<EpisodePanel>
           if (res.isSuccess) {
             SmartDialog.showToast('${response ? '取消' : ''}订阅成功');
             _favState!.value = Success(!response);
+            if (response) {
+              await LocalFavorites.remove('series', widget.seasonId!);
+            } else {
+              await LocalFavorites.add('series', {
+                'id': widget.seasonId,
+                'title': widget.ugcIntroController?.videoDetail.value.ugcSeason?.title ?? '合集 ${widget.seasonId}',
+                'cover': widget.ugcIntroController?.videoDetail.value.ugcSeason?.cover,
+              });
+            }
             widget.ugcIntroController?.seasonFavState[widget.seasonId] =
                 !response;
           } else {

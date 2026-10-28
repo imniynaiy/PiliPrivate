@@ -19,6 +19,7 @@ import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
+import 'package:PiliPlus/utils/local_favorites.dart';
 import 'package:flutter/widgets.dart' show Text, ValueChanged;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
@@ -191,7 +192,21 @@ class FavDetailController
 
   Future<void> onFav(bool isFav) async {
     if (!account.isLogin) {
-      SmartDialog.showToast('账号未登录');
+      final info = folderInfo.value;
+      if (isFav) {
+        await LocalFavorites.remove('folders', mediaId);
+      } else {
+        await LocalFavorites.add('folders', {
+          'id': mediaId,
+          'title': info.title,
+          'subtitle': info.upper?.name,
+          'cover': info.cover,
+          'kind': 'favorite',
+        });
+      }
+      folderInfo
+        ..value.favState = isFav ? 0 : 1
+        ..refresh();
       return;
     }
     final res = isFav
@@ -203,6 +218,18 @@ class FavDetailController
         ..value.favState = isFav ? 0 : 1
         ..refresh();
       SmartDialog.showToast('${isFav ? '取消' : ''}收藏成功');
+      if (isFav) {
+        await LocalFavorites.remove('folders', mediaId);
+      } else {
+        final info = folderInfo.value;
+        await LocalFavorites.add('folders', {
+          'id': mediaId,
+          'title': info.title,
+          'subtitle': info.upper?.name,
+          'cover': info.cover,
+          'kind': 'favorite',
+        });
+      }
     } else {
       res.toast();
     }

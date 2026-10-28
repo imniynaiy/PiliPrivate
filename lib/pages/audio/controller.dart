@@ -18,6 +18,7 @@ import 'package:PiliPlus/http/browser_ua.dart';
 import 'package:PiliPlus/http/constants.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/models/common/audio_normalization.dart';
+import 'package:PiliPlus/models_new/video/video_detail/data.dart';
 import 'package:PiliPlus/models/video/play/url.dart' as http_model show Volume;
 import 'package:PiliPlus/pages/common/common_intro_controller.dart'
     show FavMixin;
@@ -60,6 +61,12 @@ class AudioController extends GetxController
         BlockConfigMixin,
         BlockMixin,
         AudioNormalizationMixin {
+  @override
+  String get bvid => IdUtils.av2bv(oid.toInt());
+
+  @override
+  final Rx<VideoDetailData> videoDetail = VideoDetailData().obs;
+
   late Int64 id;
   late Int64 oid;
   late List<Int64> subId;

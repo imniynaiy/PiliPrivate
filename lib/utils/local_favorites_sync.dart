@@ -207,7 +207,7 @@ abstract final class LocalFavoritesSync {
         final details = await FavHttp.userFavFolderDetail(
           mediaId: folderId,
           pn: page,
-          ps: 100,
+          ps: 20,
         );
         if (details is! Success) throw details;
         final response = details.data;

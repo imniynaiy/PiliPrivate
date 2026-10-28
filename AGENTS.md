@@ -16,6 +16,8 @@ This is a Flutter application. App screens and controllers live under `lib/pages
 
 Use Dart formatting (`dart format`) with two-space indentation and preserve the repository’s trailing-comma style. Use `lower_snake_case.dart` filenames, `UpperCamelCase` types, and `lowerCamelCase` members. Prefer package imports (`package:PiliPlus/...`); the analyzer enforces them. Keep screen UI in its page view and controller files, and place reusable behavior in shared widgets, services, or utilities.
 
+When changing UI, follow the patterns already used in the surrounding code: reuse the project’s styles, theme extensions, and frequently used shared widgets instead of introducing a one-off visual treatment or duplicate component.
+
 ## Testing Guidelines
 
 Tests use Flutter’s `flutter_test` package and end in `_test.dart`; place new tests under `test/` near the feature they cover. Run focused tests during development, then `flutter test` and `flutter analyze` before submitting. There is no repository-wide coverage threshold.

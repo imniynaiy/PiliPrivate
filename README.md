@@ -1,3 +1,13 @@
+## PiliPrivate changes
+
+This fork is based on the [original PiliPlus project](https://github.com/bggRGjQaUbCoE/PiliPlus). Current fork-specific changes:
+
+- Home shows the search bar and account shortcut without the recommendation feed.
+- Dynamic is replaced by device-local lists for followed users, favorite folders, collections, and saved videos. Entries can be opened or removed.
+- Follow, favorite, and collection-subscription actions update these local lists while signed out and after successful server actions while signed in.
+- On startup and account login, followed users, subscribed folders/collections, and the first page of videos in favorite folders are copied into the local lists. Existing local-only entries are retained.
+- Search retains suggestions and history while omitting trending searches and search recommendations.
+
 <div align="center">
     <img width="200" height="200" src="assets/images/logo/logo.png">
 </div>
@@ -8,7 +18,6 @@
     <h1>PiliPlus</h1>
 <div align="center">
 
-中文 | [English](README.en.md)
 
 ![GitHub repo size](https://img.shields.io/github/repo-size/bggRGjQaUbCoE/PiliPlus) 
 ![GitHub Repo stars](https://img.shields.io/github/stars/bggRGjQaUbCoE/PiliPlus) 
@@ -24,15 +33,6 @@
 <br/>
 </div>
 
-## PiliPrivate changes
-
-This fork is based on the [original PiliPlus project](https://github.com/bggRGjQaUbCoE/PiliPlus). Current fork-specific changes:
-
-- Home shows the search bar and account shortcut without the recommendation feed.
-- Dynamic is replaced by device-local lists for followed users, favorite folders, collections, and saved videos. Entries can be opened or removed.
-- Follow, favorite, and collection-subscription actions update these local lists while signed out and after successful server actions while signed in.
-- On startup and account login, followed users, subscribed folders/collections, and the first page of videos in favorite folders are copied into the local lists. Existing local-only entries are retained.
-- Search retains suggestions and history while omitting trending searches and search recommendations.
 
 
 <br/>
